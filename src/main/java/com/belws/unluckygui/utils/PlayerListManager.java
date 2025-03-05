@@ -24,9 +24,7 @@ public class PlayerListManager {
     public static List<ItemStack> generatePlayerHeads(Player viewer) {
         List<ItemStack> playerHeads = new ArrayList<>();
 
-        // Loop through all online players
         for (Player onlinePlayer : Bukkit.getServer().getOnlinePlayers()) {
-            // Skip the viewer themselves
             if (onlinePlayer.equals(viewer)) {
                 continue;
             }
@@ -35,18 +33,14 @@ public class PlayerListManager {
             ItemMeta headMeta = playerHead.getItemMeta();
 
             if (headMeta instanceof SkullMeta skullMeta) {
-                // Set the custom name to the player's name
                 skullMeta.displayName(Component.text(onlinePlayer.getName(), NamedTextColor.GREEN));
 
-                // Optionally, you can add a lore or other attributes
                 List<Component> lore = new ArrayList<>();
                 lore.add(Component.text("Click to interact", NamedTextColor.GRAY));
                 skullMeta.lore(lore);
 
-                // Set the player's skin to the player head
                 skullMeta.setOwningPlayer(onlinePlayer);
 
-                // Set the item flags (such as hiding attributes if desired)
                 skullMeta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
                 playerHead.setItemMeta(skullMeta);
             }

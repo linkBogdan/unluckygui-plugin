@@ -26,34 +26,31 @@ public class HeldRolesMenu {
      * Opens the Role Selection menu for the given player but targets the roles of the other player (target).
      */
     public void openMenu(Player sender, Player target) {
-        // Get the target player's roles
+
         List<String> targetRoles = luckPermsHandler.getPlayerRoles(target);
 
-        // Create the menu inventory using the new createInventory method
         Inventory inventory = Bukkit.createInventory(
                 new MenuHolder(MenuType.HELD_ROLES_MENU),
                 27,
-                Component.text("Roles owned by: " + target.getName())
+                Component.text("Roles owned by: " + target.getName()) 
         );
 
-        // Add the roles to the inventory
+        
         for (int i = 0; i < targetRoles.size(); i++) {
             String role = targetRoles.get(i);
 
-            // Create the item for the role
+            
             ItemStack roleItem = new ItemStack(Material.PAPER);
             ItemMeta meta = roleItem.getItemMeta();
             if (meta != null) {
-                // Use the new Component API for setting display names
+                
                 meta.displayName(Component.text(role, NamedTextColor.GRAY));
 
-                // Add the item to the inventory
                 roleItem.setItemMeta(meta);
                 inventory.setItem(i, roleItem);
             }
         }
 
-        // Open the inventory for the sender (not the target)
         sender.openInventory(inventory);
     }
 }

@@ -11,19 +11,18 @@ import net.kyori.adventure.text.format.NamedTextColor;
 
 public class PlayerOptions {
 
-    private static final int CONTENT_SLOTS = 45;  // The first 45 slots are for content
+    private static final int CONTENT_SLOTS = 45;
 
     public static Inventory createMenu(Player target) {
         String title = "Options for : " + target.getName();
         Inventory inventory = SlotManager.createMenu(CONTENT_SLOTS, Component.text(title));
 
-        // Add Golden Apple to give Creative Mode
         ItemStack goldenApple = new ItemStack(Material.GOLDEN_APPLE);
         ItemMeta appleMeta = goldenApple.getItemMeta();
         appleMeta.displayName(Component.text("Grant Creative Mode", NamedTextColor.GOLD));
         goldenApple.setItemMeta(appleMeta);
 
-        inventory.setItem(22, goldenApple);  // Place item in the center slot
+        inventory.setItem(22, goldenApple);
 
         return inventory;
     }

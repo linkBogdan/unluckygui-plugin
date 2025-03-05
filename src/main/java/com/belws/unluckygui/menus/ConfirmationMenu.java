@@ -22,7 +22,7 @@ public class ConfirmationMenu {
         this.cancelAction = cancelAction;
     }
 
-    // Opens the confirmation menu with the provided action message
+    
     public static void openMenu(Player player, String actionMessage, Runnable confirmAction, Runnable cancelAction) {
         ConfirmationMenu confirmationMenu = new ConfirmationMenu(confirmAction, cancelAction);
 
@@ -30,38 +30,36 @@ public class ConfirmationMenu {
                 new MenuHolder(MenuType.CONFIRMATION_MENU), 9, Component.text(actionMessage)
         );
 
-        // Confirm item
         ItemStack confirmItem = createItem(Material.GREEN_WOOL, "Confirm", NamedTextColor.GREEN);
-        // Cancel item
+        
         ItemStack cancelItem = createItem(Material.RED_WOOL, "Cancel", NamedTextColor.RED);
-
         inventory.setItem(3, confirmItem);
         inventory.setItem(5, cancelItem);
 
         player.openInventory(inventory);
     }
 
-    // Handles the player's click in the confirmation menu
+    
     public void handleConfirmation(InventoryClickEvent event) {
         Player player = (Player) event.getWhoClicked();
         int slot = event.getSlot();
 
-        // Confirm action
+        
         if (slot == 3) {
             confirmAction.run();
             player.sendMessage("§6Action confirmed!");
         }
-        // Cancel action
+        
         else if (slot == 5) {
             cancelAction.run();
             player.sendMessage("§cAction canceled.");
         }
 
-        // Close the inventory
+        
         player.closeInventory();
     }
 
-    // Utility method to create items with display names
+    
     private static ItemStack createItem(Material material, String name, NamedTextColor color) {
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();

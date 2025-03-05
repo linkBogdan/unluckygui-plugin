@@ -8,9 +8,9 @@ import net.luckperms.api.node.types.InheritanceNode;
 import org.bukkit.entity.Player;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import com.belws.unluckygui.utils.MenuNavigator; 
 
 public class LuckPermsHandler {
     private final LuckPerms luckPerms;
@@ -59,24 +59,63 @@ public class LuckPermsHandler {
     }
 
     /**
-     * Remove a role from the player.
+     * Remove a role from the target player fetched from MenuNavigator.
      */
-    public boolean removeRole(Player player, String roleName) {
-        User user = getUser(player.getUniqueId());
+    public boolean removeRole(Player viewer, String roleName) {
+        Player targetPlayer = MenuNavigator.getTargetPlayer(viewer); 
+
+        if (targetPlayer == null) {
+            viewer.sendMessage("§cError: No target player found.");
+            return false;
+        }
+
+        System.out.println("Removing role " + roleName + " from target player: " + targetPlayer.getName());
+
+
+        User user = getUser(targetPlayer.getUniqueId());
         if (user == null) return false;
 
-        Optional<Node> nodeToRemove = user.getNodes().stream()
+        String fullRoleName = roleName.startsWith("group.") ? roleName.substring(6) : roleName;
+        
+        System.out.println("[UnluckyGUI] " + targetPlayer.getName() + " current roles: " + user.getNodes().stream()
                 .filter(node -> node instanceof InheritanceNode)
-                .filter(node -> ((InheritanceNode) node).getGroupName().equalsIgnoreCase(roleName))
-                .findFirst();
+                .map(node -> ((InheritanceNode) node).getGroupName())
+                .collect(Collectors.joining(", ")));
 
-        if (nodeToRemove.isPresent()) {
-            user.data().remove(nodeToRemove.get());
-            luckPerms.getUserManager().saveUser(user);
+        
+        boolean hasRole = user.getNodes().stream()
+                .filter(node -> node instanceof InheritanceNode)
+                .map(node -> ((InheritanceNode) node).getGroupName())
+                .anyMatch(role -> role.equalsIgnoreCase(fullRoleName));
+
+        if (!hasRole) {
+            System.out.println("[UnluckyGUI] ERROR: " + targetPlayer.getName() + " does not have the role " + fullRoleName);
+            return false; 
+        }
+        
+        InheritanceNode nodeToRemove = InheritanceNode.builder(fullRoleName).build();
+        if (user.data().remove(nodeToRemove).wasSuccessful()) {
+            
+            if (user.getPrimaryGroup().equalsIgnoreCase(fullRoleName)) {
+                user.setPrimaryGroup("default");
+            }
+
+            luckPerms.getUserManager().saveUser(user); 
+            luckPerms.getUserManager().loadUser(targetPlayer.getUniqueId()); 
+
             return true;
         }
 
         return false;
+    }
+    public void syncPlayerData(Player player) {
+        
+        User user = luckPerms.getUserManager().getUser(player.getUniqueId());
+
+        if (user != null) {
+            
+            luckPerms.getUserManager().saveUser(user); 
+        }
     }
 
     /**

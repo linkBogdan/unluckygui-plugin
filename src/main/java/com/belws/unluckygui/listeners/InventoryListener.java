@@ -1,11 +1,14 @@
 package com.belws.unluckygui.listeners;
 
-import com.belws.unluckygui.menus.ConfirmationMenu;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+//import com.belws.unluckygui.menus.ConfirmationMenu;
 import com.belws.unluckygui.utils.MenuNavigator;
 import com.belws.unluckygui.utils.MenuLevel;
 import com.belws.unluckygui.utils.MenuHolder;
 import com.belws.unluckygui.utils.MenuType;
 import com.belws.unluckygui.luckperms.LuckPermsHandler;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -13,9 +16,8 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.Material;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.inventory.meta.SkullMeta;
+import org.bukkit.Bukkit;
 
 public class InventoryListener implements Listener {
 
@@ -32,52 +34,55 @@ public class InventoryListener implements Listener {
         ItemStack clickedItem = event.getCurrentItem();
         if (clickedItem == null || clickedItem.getType() == Material.AIR) return;
 
-        event.setCancelled(true); // Prevent inventory interactions
+        event.setCancelled(true); 
 
-        // Get the title of the inventory being clicked
+        
         String inventoryTitle = event.getView().title().toString();
 
-        // Handle menu navigation and button actions based on the menu type
+        
         if (event.getInventory().getHolder() instanceof MenuHolder menuHolder) {
             MenuType menuType = menuHolder.getMenuType();
 
-            // Handle actions for the Main Menu
+            
             if (menuType == MenuType.MAIN_MENU) {
                 if (clickedItem.getType() == Material.BOOK) {
-                    // Navigate to the list menu
+                    
                     MenuNavigator.openMenu(player, MenuLevel.LIST_MENU, player);
                 }
             }
 
-            // Handle actions for the Held Roles Menu
+            
             if (menuType == MenuType.HELD_ROLES_MENU) {
                 if (clickedItem.getType() == Material.PAPER) {
-                    // Handle role removal (when clicking a role in the held roles menu)
+                    
                     ItemMeta meta = clickedItem.getItemMeta();
                     if (meta != null && meta.displayName() != null) {
-                        Component roleName = meta.displayName();
-                        Player targetPlayer = MenuNavigator.getTargetPlayer(player);
+                        Component roleNameComponent = meta.displayName();
 
-                        // Open confirmation menu for removing the role
+                        
+                        String cleanedRoleName = PlainTextComponentSerializer.plainText().serialize(roleNameComponent).trim();
+
+                        
+                        String fullRoleName = "group." + cleanedRoleName;
+
+                        
+                        Player targetPlayer = MenuNavigator.getTargetPlayer(player); 
+
                         if (targetPlayer != null) {
-                            ConfirmationMenu.openMenu(
-                                    player,
-                                    "Are you sure you want to remove the role: " + roleName + "?",
-                                    () -> {
-                                        // Remove the role from the target player
-                                        luckPermsHandler.removeRole(targetPlayer, roleName.toString());
-                                        player.sendMessage("The role " + roleName + " was successfully removed from " + targetPlayer.getName());
-                                    },
-                                    () -> player.sendMessage("Role removal has been canceled.")
-                            );
+                            
+                            String command = "lp user " + targetPlayer.getName() + " permission unset " + fullRoleName;
+
+                            Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), command);
+
+                        } else {
+                            player.sendMessage("§cNo target player specified.");
                         }
                     }
                 }
             }
-
-            // Handle Creative Mode button in the Options menu
+            
             if (inventoryTitle.contains("Options for") && clickedItem.getType() == Material.GOLDEN_APPLE) {
-                Player targetPlayer = MenuNavigator.getTargetPlayer(player); // Get the target player
+                Player targetPlayer = MenuNavigator.getTargetPlayer(player); 
                 if (targetPlayer != null) {
                     targetPlayer.setGameMode(org.bukkit.GameMode.CREATIVE);
                     player.sendMessage("§6You granted Creative Mode to " + targetPlayer.getName() + "!");
@@ -85,17 +90,17 @@ public class InventoryListener implements Listener {
                 }
             }
 
-            // Handle Go Back button in any menu
+            
             if (clickedItem.getType() == Material.BARRIER && clickedItem.hasItemMeta()) {
                 ItemMeta meta = clickedItem.getItemMeta();
                 if (meta != null && meta.displayName() != null &&
                         meta.displayName().equals(Component.text("Go Back", NamedTextColor.RED))) {
-                    // Go back to the previous menu
+                    
                     MenuNavigator.goBack(player);
                 }
             }
 
-            // Handle Player Head click (open PlayerOptions for the correct player)
+            
             if (clickedItem.getType() == Material.PLAYER_HEAD && clickedItem.hasItemMeta()) {
                 ItemMeta meta = clickedItem.getItemMeta();
                 if (meta instanceof SkullMeta skullMeta && skullMeta.getOwningPlayer() != null) {

@@ -2,20 +2,20 @@ package com.belws.unluckygui.utils;
 
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
+import org.bukkit.entity.Player;
 
 public class MenuHolder implements InventoryHolder {
     private final MenuType menuType;
     private final Runnable confirmAction;
     private final Runnable cancelAction;
+    private Player targetPlayer;
 
-    // Constructor for menus that require confirm/cancel actions
     public MenuHolder(MenuType menuType, Runnable confirmAction, Runnable cancelAction) {
         this.menuType = menuType;
         this.confirmAction = confirmAction;
         this.cancelAction = cancelAction;
     }
 
-    // Constructor for other menus that don't need actions
     public MenuHolder(MenuType menuType) {
         this(menuType, () -> {}, () -> {});
     }
@@ -29,6 +29,10 @@ public class MenuHolder implements InventoryHolder {
         return menuType;
     }
 
+    /**
+     SOON
+     */
+
     public Runnable getConfirmAction() {
         return confirmAction;
     }
@@ -36,4 +40,13 @@ public class MenuHolder implements InventoryHolder {
     public Runnable getCancelAction() {
         return cancelAction;
     }
+
+    public void setTargetPlayer(Player targetPlayer) {
+        this.targetPlayer = targetPlayer;
+    }
+
+    public Player getTargetPlayer() {
+        return targetPlayer;
+    }
+
 }

@@ -11,7 +11,6 @@ public class OpenGui implements CommandExecutor {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (sender instanceof Player) {
             Player player = (Player) sender;
-            // Open the Main Menu directly
             player.openInventory(MainMenu.createMenu(player));
         }
         return true;
