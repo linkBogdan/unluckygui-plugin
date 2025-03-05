@@ -4,17 +4,20 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 
 public class MenuHolder implements InventoryHolder {
-    private MenuType menuType;  // Change from String to MenuType
-    private String previousMenuName;
+    private final MenuType menuType;
+    private final Runnable confirmAction;
+    private final Runnable cancelAction;
 
-    public MenuHolder(MenuType menuType) {
+    // Constructor for menus that require confirm/cancel actions
+    public MenuHolder(MenuType menuType, Runnable confirmAction, Runnable cancelAction) {
         this.menuType = menuType;
-        this.previousMenuName = null;
+        this.confirmAction = confirmAction;
+        this.cancelAction = cancelAction;
     }
 
-    public MenuHolder(MenuType menuType, String previousMenuName) {
-        this.menuType = menuType;
-        this.previousMenuName = previousMenuName;
+    // Constructor for other menus that don't need actions
+    public MenuHolder(MenuType menuType) {
+        this(menuType, () -> {}, () -> {});
     }
 
     @Override
@@ -26,7 +29,11 @@ public class MenuHolder implements InventoryHolder {
         return menuType;
     }
 
-    public String getPreviousMenuName() {
-        return previousMenuName;
+    public Runnable getConfirmAction() {
+        return confirmAction;
+    }
+
+    public Runnable getCancelAction() {
+        return cancelAction;
     }
 }

@@ -16,6 +16,7 @@ public class PluginMain extends JavaPlugin {
     public void onEnable() {
         instance = this;
 
+        // Initialize LuckPermsHandler only if LuckPerms plugin is found
         if (getServer().getPluginManager().getPlugin("LuckPerms") != null) {
             getLogger().info("LuckPerms detected and hooked!");
             luckPermsHandler = new LuckPermsHandler(); // Initialize LuckPermsHandler
@@ -23,10 +24,12 @@ public class PluginMain extends JavaPlugin {
             getLogger().warning("LuckPerms not found! Some features may be disabled.");
         }
 
-        // Register the InventoryListener with LuckPermsHandler instance
-        getServer().getPluginManager().registerEvents(new InventoryListener(luckPermsHandler), this);
+        // Register the InventoryListener with the initialized luckPermsHandler instance
+        if (luckPermsHandler != null) {
+            getServer().getPluginManager().registerEvents(new InventoryListener(luckPermsHandler), this);
+        }
 
-        // Register the commands
+        // Register commands
         this.getCommand("ul").setExecutor(new OpenGui());
         this.getCommand("role").setExecutor(new OpenRoleGui());  // Role menu command
     }
