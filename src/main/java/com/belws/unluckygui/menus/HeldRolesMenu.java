@@ -1,6 +1,8 @@
 package com.belws.unluckygui.menus;
 
 import com.belws.unluckygui.luckperms.LuckPermsHandler;
+import com.belws.unluckygui.utils.MenuHolder;
+import com.belws.unluckygui.utils.MenuType;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -28,7 +30,11 @@ public class HeldRolesMenu {
         List<String> targetRoles = luckPermsHandler.getPlayerRoles(target);
 
         // Create the menu inventory using the new createInventory method
-        Inventory inventory = Bukkit.createInventory(null, 27, Component.text("Select a Role for " + target.getName()));
+        Inventory inventory = Bukkit.createInventory(
+                new MenuHolder(MenuType.HELD_ROLES_MENU),
+                27,
+                Component.text("Roles owned by: " + target.getName())
+        );
 
         // Add the roles to the inventory
         for (int i = 0; i < targetRoles.size(); i++) {

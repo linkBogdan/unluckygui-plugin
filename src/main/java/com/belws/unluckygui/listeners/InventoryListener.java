@@ -4,6 +4,7 @@ import com.belws.unluckygui.menus.*;
 import com.belws.unluckygui.utils.MenuNavigator;
 import com.belws.unluckygui.utils.MenuLevel;
 import com.belws.unluckygui.luckperms.LuckPermsHandler;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -40,12 +41,18 @@ public class InventoryListener implements Listener {
 
         // Handle "Creative Mode" button click
         if (clickedItem.getType() == Material.GOLDEN_APPLE && inventoryTitle.contains("Options for")) {
-            Player targetPlayer = MenuNavigator.getTargetPlayer(player); // Get the actual target
+            Player targetPlayer = MenuNavigator.getTargetPlayer(player);
 
             if (targetPlayer != null) {
-                targetPlayer.setGameMode(org.bukkit.GameMode.CREATIVE);
-                player.sendMessage("§6You granted Creative Mode to " + targetPlayer.getName() + "!");
-                targetPlayer.sendMessage("§6You have been granted Creative Mode!");
+                new ConfirmationMenu(
+                        "Grant Creative Mode to " + targetPlayer.getName() + "?",
+                        () -> {
+                            targetPlayer.setGameMode(org.bukkit.GameMode.CREATIVE);
+                            player.sendMessage("§6You granted Creative Mode to " + targetPlayer.getName() + "!");
+                            targetPlayer.sendMessage("§6You have been granted Creative Mode!");
+                        },
+                        () -> player.sendMessage("§cCreative Mode grant canceled.")
+                ).openMenu(player);
             }
         }
 
@@ -70,22 +77,20 @@ public class InventoryListener implements Listener {
         }
 
         // Handle Role Selection click
-        if (inventoryTitle.contains("Select a Role for") && clickedItem.getType() == Material.PAPER) {
-            Component roleName = clickedItem.getItemMeta().displayName(); // Get the role name (now returns Component)
+        if (inventoryTitle.contains("Roles owned by: ") && clickedItem.getType() == Material.PAPER) {
+            Component roleName = clickedItem.getItemMeta().displayName();
+            Player targetPlayer = MenuNavigator.getTargetPlayer(player);
 
-            // Open confirmation menu for role removal
-            new ConfirmationMenu("Are you sure you want to remove the role: " + roleName + "?", confirmed -> {
-                if (confirmed) {
-                    Player targetPlayer = MenuNavigator.getTargetPlayer(player); // Get the target player whose role will be removed
-                    if (targetPlayer != null) {
-                        // Remove the role from the target player
-                        luckPermsHandler.removeRole(targetPlayer, roleName.toString());
-                        player.sendMessage("The role " + roleName + " was successfully removed from " + targetPlayer.getName());
-                    }
-                } else {
-                    player.sendMessage("Role removal has been canceled.");
-                }
-            }).openMenu(player);
+            if (targetPlayer != null) {
+                new ConfirmationMenu(
+                        "Remove role: " + LegacyComponentSerializer.legacySection().serialize(roleName) + "?",
+                        () -> {
+                            luckPermsHandler.removeRole(targetPlayer, LegacyComponentSerializer.legacySection().serialize(roleName));
+                            player.sendMessage("The role " + LegacyComponentSerializer.legacySection().serialize(roleName) + " was successfully removed from " + targetPlayer.getName());
+                        },
+                        () -> player.sendMessage("Role removal canceled.")
+                ).openMenu(player);
+            }
         }
     }
 }

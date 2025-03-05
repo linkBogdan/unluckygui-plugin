@@ -1,71 +1,72 @@
-
 package com.belws.unluckygui.menus;
 
 import com.belws.unluckygui.core.PluginMain;
+import com.belws.unluckygui.utils.MenuHolder;
+import com.belws.unluckygui.utils.MenuType;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
-
-import java.util.function.Consumer;
 
 public class ConfirmationMenu {
+    private final Component actionMessage;
+    private final Runnable confirmAction;
+    private final Runnable cancelAction;
 
-    private final String actionMessage;
-    private final Consumer<Boolean> onConfirm; // Callback for confirmation action
-
-    public ConfirmationMenu(String actionMessage, Consumer<Boolean> onConfirm) {
-        this.actionMessage = actionMessage;
-        this.onConfirm = onConfirm;
+    public ConfirmationMenu(
+            String actionMessage,
+            Runnable confirmAction,
+            Runnable cancelAction
+    ) {
+        this.actionMessage = Component.text(actionMessage);
+        this.confirmAction = confirmAction;
+        this.cancelAction = cancelAction;
     }
 
-    /**
-     * Opens the confirmation menu for the sender (player)
-     */
+    public ConfirmationMenu(
+            String actionMessage,
+            Runnable confirmAction
+    ) {
+        this(actionMessage, confirmAction, () -> {});
+    }
+
     public void openMenu(Player player) {
-        // Create the inventory with 9 slots (simple confirmation menu)
-        Inventory inventory = PluginMain.getInstance().getServer().createInventory(null, 9, Component.text("Confirm Action"));
+        Inventory inventory = PluginMain.getInstance().getServer().createInventory(
+                new MenuHolder(MenuType.CONFIRMATION_MENU),
+                9,
+                actionMessage
+        );
+        // Confirm item
+        ItemStack confirmItem = createItem(Material.GREEN_WOOL, "Confirm", NamedTextColor.GREEN);
+        // Cancel item
+        ItemStack cancelItem = createItem(Material.RED_WOOL, "Cancel", NamedTextColor.RED);
 
-        // Create green wool (confirm)
-        ItemStack greenWool = new ItemStack(Material.GREEN_WOOL);
-        ItemMeta greenMeta = greenWool.getItemMeta();
-        if (greenMeta != null) {
-            greenMeta.displayName(Component.text("Confirm", NamedTextColor.GREEN));
-            greenWool.setItemMeta(greenMeta);
-        }
+        inventory.setItem(3, confirmItem);
+        inventory.setItem(5, cancelItem);
 
-        // Create red wool (cancel)
-        ItemStack redWool = new ItemStack(Material.RED_WOOL);
-        ItemMeta redMeta = redWool.getItemMeta();
-        if (redMeta != null) {
-            redMeta.displayName(Component.text("Cancel", NamedTextColor.RED));
-            redWool.setItemMeta(redMeta);
-        }
-
-        // Place the wool in the slots
-        inventory.setItem(3, greenWool); // Slot 3 = Confirm
-        inventory.setItem(5, redWool);   // Slot 5 = Cancel
-
-        // Open the inventory for the player
         player.openInventory(inventory);
     }
 
-    /**
-     * Handle the action based on the item clicked in the confirmation menu
-     * @param player the player who clicked the item
-     * @param slot the slot number of the item clicked
-     */
-    public void handleConfirmation(Player player, int slot) {
-        if (slot == 3) {
-            // Green Wool - Confirm
-            onConfirm.accept(true);  // Execute the confirmed action
-        } else if (slot == 5) {
-            // Red Wool - Cancel
-            onConfirm.accept(false); // Cancel the action
+    private ItemStack createItem(Material material, String name, NamedTextColor color) {
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.displayName(Component.text(name, color));
+            item.setItemMeta(meta);
         }
+        return item;
     }
 
+    public void handleConfirmation(Player player, int slot) {
+        if (slot == 3) {
+            // Confirm action
+            confirmAction.run();
+        } else if (slot == 5) {
+            // Cancel action
+            cancelAction.run();
+        }
+    }
 }
