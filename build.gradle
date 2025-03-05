@@ -8,9 +8,11 @@ version '1.0.0'
 repositories {
     mavenCentral()  // Always include Maven Central as a fallback
     maven { url 'https://repo.papermc.io/repository/maven-public/' }  // Paper's repository
+    maven { url 'https://repo.lucko.me' }
 }
 
 dependencies {
+    implementation 'net.luckperms:api:5.4'
     compileOnly 'io.papermc.paper:paper-api:1.20-R0.1-SNAPSHOT'  // Paper API dependency for Paper 1.20.1
 }
 

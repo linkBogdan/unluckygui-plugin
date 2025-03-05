@@ -7,3 +7,6 @@ commands:
     description: Opens the main menu
     usage: /ul
 
+  role:
+    description: "Opens the role menu for a player"
+    usage: "/role <player_name>"

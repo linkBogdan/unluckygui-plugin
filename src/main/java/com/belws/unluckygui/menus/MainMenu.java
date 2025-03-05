@@ -29,7 +29,7 @@ public class MainMenu {
 
         inventory.setItem(12, playerHead);  // Set player head at position 11
 
-        // Create placeholder book item
+        // Example of how to use method NOT DEPRECATED
         ItemStack book = new ItemStack(Material.BOOK);
         ItemMeta bookMeta = book.getItemMeta();
         if (bookMeta != null) {
