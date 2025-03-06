@@ -11,11 +11,16 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class MenuNavigator {
-
     private static final Map<Player, MenuLevel> previousMenus = new ConcurrentHashMap<>();
     private static final Map<Player, MenuLevel> currentMenus = new ConcurrentHashMap<>();
     private static final Map<Player, Player> targetPlayers = new ConcurrentHashMap<>();
+
     private static LuckPermsHandler luckPermsHandler;
+
+    // Constructor to inject LuckPermsHandler
+    public MenuNavigator(LuckPermsHandler luckPermsHandler) {
+        this.luckPermsHandler = luckPermsHandler;
+    }
 
     public static void openMenu(Player viewer, MenuLevel menuLevel, Player target) {
         // Store previous menu - only if moving deeper
@@ -29,7 +34,6 @@ public class MenuNavigator {
             targetPlayers.put(viewer, target);
         }
 
-
         switch (menuLevel) {
             case MAIN_MENU -> viewer.openInventory(MainMenu.createMenu(viewer));
             case LIST_MENU -> viewer.openInventory(ListMenu.createMenu(viewer));
@@ -40,9 +44,6 @@ public class MenuNavigator {
             case HELD_ROLES_MENU -> {
                 Player targetPlayer = targetPlayers.getOrDefault(viewer, viewer);
                 new HeldRolesMenu(luckPermsHandler).openMenu(viewer, targetPlayer);
-            }
-            case CONFIRMATION_MENU -> {
-                viewer.sendMessage("§cError: Use ConfirmationMenu to open this menu type.");
             }
             default -> viewer.sendMessage("This menu is not available.");
         }
@@ -60,3 +61,4 @@ public class MenuNavigator {
         return targetPlayers.getOrDefault(viewer, viewer);
     }
 }
+

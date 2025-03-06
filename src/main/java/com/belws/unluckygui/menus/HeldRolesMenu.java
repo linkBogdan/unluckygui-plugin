@@ -35,7 +35,6 @@ public class HeldRolesMenu {
                 Component.text("Roles owned by: " + target.getName()) 
         );
 
-        
         for (int i = 0; i < targetRoles.size(); i++) {
             String role = targetRoles.get(i);
 
