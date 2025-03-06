@@ -8,6 +8,7 @@ import com.belws.unluckygui.utils.MenuType;
 import com.belws.unluckygui.luckperms.LuckPermsHandler;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -87,6 +88,22 @@ public class InventoryListener implements Listener {
                         targetPlayer.setGameMode(org.bukkit.GameMode.SURVIVAL);
                         player.sendMessage("§6You granted Survival Mode to "+ targetPlayer.getName() + "!");
                         targetPlayer.sendMessage("§6You have been granted Survival Mode!");
+                    }
+                }
+                if (clickedItem.getType() == Material.ENDER_EYE){
+                    Player targetPlayer = MenuNavigator.getTargetPlayer(player);
+                    if (targetPlayer != null) {
+                        targetPlayer.setGameMode(GameMode.SPECTATOR);
+                        player.sendMessage("§6You granted Spectator Mode to "+ targetPlayer.getName() + "!");
+                        targetPlayer.sendMessage("§You have been granted Spectator Mode!");
+                    }
+                }
+                if (clickedItem.getType() == Material.GRASS_BLOCK){
+                    Player targetPlayer = MenuNavigator.getTargetPlayer(player);
+                    if (targetPlayer != null) {
+                        targetPlayer.setGameMode(GameMode.ADVENTURE);
+                        player.sendMessage("§You granted Adventure Mode to "+ targetPlayer.getName() + "!");
+                        targetPlayer.sendMessage("§You have been granted Adventure Mode!");
                     }
                 }
             }

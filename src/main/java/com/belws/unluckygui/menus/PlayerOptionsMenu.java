@@ -45,11 +45,27 @@ public class PlayerOptionsMenu {
         }
         inventory.setItem(1, survivalModeButton);
 
+        ItemStack spectatorModeButton = new ItemStack(Material.ENDER_EYE);
+        ItemMeta spectatorModeMeta = spectatorModeButton.getItemMeta();
+        if (spectatorModeMeta != null) {
+            spectatorModeMeta.displayName(Component.text("Grant Spectator Mode", NamedTextColor.GOLD));
+            spectatorModeButton.setItemMeta(spectatorModeMeta);
+        }
+        inventory.setItem(6, spectatorModeButton);
+
+        ItemStack adventureModeButton = new ItemStack(Material.GRASS_BLOCK);
+        ItemMeta adventureModeMeta = adventureModeButton.getItemMeta();
+        if (adventureModeMeta != null) {
+            adventureModeMeta.displayName(Component.text("Grant Adventure Mode", NamedTextColor.GOLD));
+            adventureModeButton.setItemMeta(adventureModeMeta);
+        }
+        inventory.setItem(7, adventureModeButton);
+
         ItemStack playerHead = new ItemStack(Material.PLAYER_HEAD, 1);
         ItemMeta rolesMeta = playerHead.getItemMeta();
         if (rolesMeta instanceof SkullMeta skullMeta) {
             skullMeta.setOwningPlayer(target);
-            skullMeta.displayName(Component.text("&7Owned roles for " + target.getName(), NamedTextColor.AQUA));
+            skullMeta.displayName(Component.text("Owned roles for ", NamedTextColor.GRAY).append(Component.text(target.getName(), NamedTextColor.AQUA)));
             playerHead.setItemMeta(skullMeta);
         }
 

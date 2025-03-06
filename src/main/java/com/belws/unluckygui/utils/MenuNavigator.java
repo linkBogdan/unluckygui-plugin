@@ -23,11 +23,6 @@ public class MenuNavigator {
     }
 
     public static void openMenu(Player viewer, MenuLevel menuLevel, Player target) {
-        // Store previous menu - only if moving deeper
-        if (currentMenus.containsKey(viewer) && menuLevel.getLevel() > currentMenus.get(viewer).getLevel()) {
-            previousMenus.put(viewer, currentMenus.get(viewer));
-        }
-
         currentMenus.put(viewer, menuLevel);
 
         // Store target player if necessary
