@@ -2,7 +2,7 @@ package com.belws.unluckygui.utils;
 
 import com.belws.unluckygui.menus.MainMenu;
 import com.belws.unluckygui.menus.ListMenu;
-import com.belws.unluckygui.menus.PlayerOptions;
+import com.belws.unluckygui.menus.PlayerOptionsMenu;
 import com.belws.unluckygui.menus.HeldRolesMenu;
 import com.belws.unluckygui.luckperms.LuckPermsHandler;
 import org.bukkit.entity.Player;
@@ -30,6 +30,7 @@ public class MenuNavigator {
 
         currentMenus.put(viewer, menuLevel);
 
+        // Store target player if necessary
         if ((menuLevel == MenuLevel.PLAYER_OPTIONS || menuLevel == MenuLevel.HELD_ROLES_MENU) && target != null) {
             targetPlayers.put(viewer, target);
         }
@@ -38,12 +39,13 @@ public class MenuNavigator {
             case MAIN_MENU -> viewer.openInventory(MainMenu.createMenu(viewer));
             case LIST_MENU -> viewer.openInventory(ListMenu.createMenu(viewer));
             case PLAYER_OPTIONS -> {
+                // Use getTargetPlayer to get the correct target player (default to viewer if not set)
                 Player targetPlayer = targetPlayers.getOrDefault(viewer, viewer);
-                viewer.openInventory(PlayerOptions.createMenu(targetPlayer));
+                viewer.openInventory(PlayerOptionsMenu.createMenu(viewer, targetPlayer)); // Pass both viewer and target
             }
             case HELD_ROLES_MENU -> {
                 Player targetPlayer = targetPlayers.getOrDefault(viewer, viewer);
-                new HeldRolesMenu(luckPermsHandler).openMenu(viewer, targetPlayer);
+                new HeldRolesMenu(luckPermsHandler).openMenu(viewer, targetPlayer); // Pass both viewer and target
             }
             default -> viewer.sendMessage("This menu is not available.");
         }

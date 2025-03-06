@@ -1,12 +1,12 @@
 name: UnluckyGUI
 version: 1.0.0
 main: com.belws.unluckygui.core.PluginMain
-api-version: 1.16  # Updated for 1.16+ compatibility
+api-version: 1.16
 commands:
   ul:
     description: Opens the main menu
     usage: /ul
 
-  role:
-    description: "Opens the role menu for a player"
-    usage: "/role <player_name>"
+  open:
+    description: "Opens the player options menu"
+    usage: "/open <player_name>"

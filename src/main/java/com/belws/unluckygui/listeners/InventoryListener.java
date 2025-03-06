@@ -72,14 +72,25 @@ public class InventoryListener implements Listener {
             }
 
             // Grant Creative Mode Interaction
-            if (inventoryTitle.contains("Options for") && clickedItem.getType() == Material.GOLDEN_APPLE) {
-                Player targetPlayer = MenuNavigator.getTargetPlayer(player);
-                if (targetPlayer != null) {
-                    targetPlayer.setGameMode(org.bukkit.GameMode.CREATIVE);
-                    player.sendMessage("§6You granted Creative Mode to " + targetPlayer.getName() + "!");
-                    targetPlayer.sendMessage("§6You have been granted Creative Mode!");
+            if (menuType == MenuType.PLAYER_OPTIONS ){
+                if(clickedItem.getType() == Material.GOLDEN_APPLE) {
+                    Player targetPlayer = MenuNavigator.getTargetPlayer(player);
+                    if (targetPlayer != null) {
+                        targetPlayer.setGameMode(org.bukkit.GameMode.CREATIVE);
+                        player.sendMessage("§6You granted Creative Mode to " + targetPlayer.getName() + "!");
+                        targetPlayer.sendMessage("§6You have been granted Creative Mode!");
+                    }
+                }
+                if (clickedItem.getType() == Material.APPLE) {
+                    Player targetPlayer = MenuNavigator.getTargetPlayer(player);
+                    if (targetPlayer != null) {
+                        targetPlayer.setGameMode(org.bukkit.GameMode.SURVIVAL);
+                        player.sendMessage("§6You granted Survival Mode to "+ targetPlayer.getName() + "!");
+                        targetPlayer.sendMessage("§6You have been granted Survival Mode!");
+                    }
                 }
             }
+
 
             // Go Back Interaction
             if (clickedItem.getType() == Material.BARRIER && clickedItem.hasItemMeta()) {
