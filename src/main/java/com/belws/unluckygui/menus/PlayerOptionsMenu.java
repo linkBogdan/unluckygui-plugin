@@ -15,19 +15,14 @@ import org.bukkit.inventory.meta.SkullMeta;
 
 public class PlayerOptionsMenu {
 
-    private static final int CONTENT_SLOTS = 45;
+    private static final int CONTENT_SLOTS = 18; // Set the desired content slots
 
     public static Inventory createMenu(Player viewer, Player target) {
+        // Title for the menu
         Component title = Component.text("Options for: " + target.getName());
 
-        Inventory inventory = Bukkit.createInventory(
-                new MenuHolder(MenuType.PLAYER_OPTIONS),
-                CONTENT_SLOTS + 9,
-                title
-        );
-
-        SlotManager.populateNavigation(inventory);
-
+        // Create the menu with 27 content slots, the correct menu type, and title
+        Inventory inventory = SlotManager.createMenu(CONTENT_SLOTS, title, MenuType.PLAYER_OPTIONS);
         ItemStack creativeModeButton = new ItemStack(Material.GOLDEN_APPLE);
         ItemMeta creativeModeMeta = creativeModeButton.getItemMeta();
         if (creativeModeMeta != null) {

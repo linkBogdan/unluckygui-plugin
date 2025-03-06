@@ -118,6 +118,7 @@ public class InventoryListener implements Listener {
                 }
             }
 
+
             // Player Head (Main Menu) Interaction
             if (menuType != MenuType.PLAYER_OPTIONS) {
                 if (clickedItem.getType() == Material.PLAYER_HEAD && clickedItem.hasItemMeta()) {

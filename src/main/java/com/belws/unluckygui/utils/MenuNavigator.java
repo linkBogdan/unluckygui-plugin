@@ -36,7 +36,8 @@ public class MenuNavigator {
             case PLAYER_OPTIONS -> {
                 // Use getTargetPlayer to get the correct target player (default to viewer if not set)
                 Player targetPlayer = targetPlayers.getOrDefault(viewer, viewer);
-                viewer.openInventory(PlayerOptionsMenu.createMenu(viewer, targetPlayer)); // Pass both viewer and target
+                viewer.openInventory(PlayerOptionsMenu.createMenu(viewer, targetPlayer));
+                System.out.println("Opened for "+ viewer+ " and " + targetPlayer);
             }
             case HELD_ROLES_MENU -> {
                 Player targetPlayer = targetPlayers.getOrDefault(viewer, viewer);
@@ -47,10 +48,22 @@ public class MenuNavigator {
     }
 
     public static void goBack(Player player) {
-        if (previousMenus.containsKey(player)) {
-            openMenu(player, previousMenus.get(player), targetPlayers.getOrDefault(player, player));
-        } else {
-            openMenu(player, MenuLevel.MAIN_MENU, player);
+        // Get the current menu level for the player
+        MenuLevel currentMenuLevel = currentMenus.getOrDefault(player, MenuLevel.MAIN_MENU);
+
+        Player targetPlayer = targetPlayers.getOrDefault(player, player);
+
+        if (currentMenuLevel == MenuLevel.PLAYER_OPTIONS && !player.equals(targetPlayer)) {
+            openMenu(player, MenuLevel.LIST_MENU, targetPlayer); // Go back to LIST_MENU
+        }
+        else if (currentMenuLevel == MenuLevel.PLAYER_OPTIONS && previousMenus.get(player) == MenuLevel.LIST_MENU) {
+            openMenu(player, MenuLevel.LIST_MENU, targetPlayer); // Go back to LIST_MENU
+        }
+        else if (currentMenuLevel == MenuLevel.PLAYER_OPTIONS && previousMenus.get(player) == null) {
+            player.closeInventory();
+        }
+        else {
+            openMenu(player, MenuLevel.MAIN_MENU, targetPlayer); // Go back to MAIN_MENU
         }
     }
 

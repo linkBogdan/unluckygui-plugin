@@ -1,8 +1,10 @@
 package com.belws.unluckygui.menus;
 
+import com.belws.unluckygui.utils.MenuType;
 import com.belws.unluckygui.utils.SlotManager;
 import com.belws.unluckygui.utils.PlayerListManager;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -15,8 +17,9 @@ public class ListMenu {
     private static final int CONTENT_SLOTS = 45;  
 
     public static Inventory createMenu(Player player) {
-        
-        Inventory inventory = SlotManager.createMenu(CONTENT_SLOTS, Component.text("List Menu"));
+
+        Component title = Component.text("List", NamedTextColor.AQUA);
+        Inventory inventory = SlotManager.createMenu(CONTENT_SLOTS, title, MenuType.LIST_MENU);
 
         
         List<ItemStack> playerHeads = PlayerListManager.generatePlayerHeads(player);
