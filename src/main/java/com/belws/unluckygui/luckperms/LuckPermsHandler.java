@@ -1,10 +1,12 @@
 package com.belws.unluckygui.luckperms;
 
+import com.belws.unluckygui.core.PluginMain;
 import net.luckperms.api.LuckPerms;
 import net.luckperms.api.LuckPermsProvider;
 import net.luckperms.api.model.user.User;
 import net.luckperms.api.node.Node;
 import net.luckperms.api.node.types.InheritanceNode;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 import java.util.List;
@@ -97,61 +99,101 @@ public class LuckPermsHandler {
      * Remove a role from the target player fetched from MenuNavigator.
      */
     public boolean removeRole(Player viewer, String roleName) {
-        Player targetPlayer = MenuNavigator.getTargetPlayer(viewer); 
-
+        Player targetPlayer = MenuNavigator.getTargetPlayer(viewer);
         if (targetPlayer == null) {
             viewer.sendMessage("§cError: No target player found.");
             return false;
         }
 
-        System.out.println("Removing role " + roleName + " from target player: " + targetPlayer.getName());
-
+        System.out.println("Attempting to remove role " + roleName + " from target player: " + targetPlayer.getName());
 
         User user = getUser(targetPlayer.getUniqueId());
         if (user == null) return false;
 
         String fullRoleName = roleName.startsWith("group.") ? roleName.substring(6) : roleName;
-        
-        System.out.println("[UnluckyGUI] " + targetPlayer.getName() + " current roles: " + user.getNodes().stream()
-                .filter(node -> node instanceof InheritanceNode)
-                .map(node -> ((InheritanceNode) node).getGroupName())
-                .collect(Collectors.joining(", ")));
 
-        
-        boolean hasRole = user.getNodes().stream()
-                .filter(node -> node instanceof InheritanceNode)
-                .map(node -> ((InheritanceNode) node).getGroupName())
-                .anyMatch(role -> role.equalsIgnoreCase(fullRoleName));
+        // Get player's current server (assuming there's a method to get the player's current server)
+        String serverContext = getPlayerCurrentServer(targetPlayer, fullRoleName); // Implement this method
 
-        if (!hasRole) {
-            System.out.println("[UnluckyGUI] ERROR: " + targetPlayer.getName() + " does not have the role " + fullRoleName);
-            return false; 
+        // Find only nodes that match the specific role AND context
+        List<InheritanceNode> nodesToRemove = user.getNodes().stream()
+                .filter(node -> node instanceof InheritanceNode)
+                .map(node -> (InheritanceNode) node)
+                .filter(node -> node.getGroupName().equalsIgnoreCase(fullRoleName))
+                .filter(node -> {
+                    // Check if the node has a server context and matches the current server
+                    return node.getContexts().getAnyValue("server")
+                            .map(ctx -> ctx.equalsIgnoreCase(serverContext)) // Only remove if it matches the server
+                            .orElse(true); // If there's no server context, it’s global
+                })
+                .collect(Collectors.toList());
+
+        if (nodesToRemove.isEmpty()) {
+            System.out.println("[UnluckyGUI] ERROR: " + targetPlayer.getName() + " does not have the role " + fullRoleName + " on server " + serverContext);
+            return false;
         }
-        
-        InheritanceNode nodeToRemove = InheritanceNode.builder(fullRoleName).build();
-        if (user.data().remove(nodeToRemove).wasSuccessful()) {
-            
-            if (user.getPrimaryGroup().equalsIgnoreCase(fullRoleName)) {
-                user.setPrimaryGroup("default");
+
+        // Remove only relevant nodes
+        boolean removed = false;
+        for (InheritanceNode node : nodesToRemove) {
+            if (user.data().remove(node).wasSuccessful()) {
+                System.out.println("[UnluckyGUI] Removed role: " + fullRoleName + " (Context: " + node.getContexts() + ")");
+                removed = true;
             }
-
-            luckPerms.getUserManager().saveUser(user); 
-            luckPerms.getUserManager().loadUser(targetPlayer.getUniqueId()); 
-
-            return true;
         }
 
-        return false;
+        if (!removed) {
+            System.out.println("[UnluckyGUI] Failed to remove role: " + fullRoleName);
+            return false;
+        }
+
+        // Ensure changes are applied and persisted
+        luckPerms.getUserManager().saveUser(user);
+        luckPerms.getUserManager().modifyUser(user.getUniqueId(), u -> {});
+        luckPerms.getUserManager().loadUser(targetPlayer.getUniqueId());
+
+        return true;
     }
+
     public void syncPlayerData(Player player) {
-        
         User user = luckPerms.getUserManager().getUser(player.getUniqueId());
 
         if (user != null) {
-            
-            luckPerms.getUserManager().saveUser(user); 
+            // Ensure user changes are saved and reloaded
+            luckPerms.getUserManager().modifyUser(user.getUniqueId(), u -> {});
+            luckPerms.getUserManager().saveUser(user);
+            luckPerms.getUserManager().loadUser(player.getUniqueId());
+
+            // Clear and refresh the player's permissions
+            player.recalculatePermissions();
+
+            // Wait a tick and force LuckPerms to refresh by running a console command
+            Bukkit.getScheduler().runTaskLater(PluginMain.getInstance(), () -> {
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "lp user " + player.getName() + " parent info");
+            }, 20L); // Delay by 1 second (20 ticks) to allow LuckPerms to process changes
         }
     }
+
+
+
+
+
+
+    private String getPlayerCurrentServer(Player player, String roleName) {
+        User user = getUser(player.getUniqueId());
+        if (user == null) return "global";
+
+        return user.getNodes().stream()
+                .filter(node -> node instanceof InheritanceNode)
+                .map(node -> (InheritanceNode) node)
+                .filter(node -> node.getGroupName().equalsIgnoreCase(roleName))
+                .flatMap(node -> node.getContexts().getAnyValue("server").stream()) // Extract server context if it exists
+                .findFirst() // Get the first match
+                .orElse("global"); // Default to global if no specific server is found
+    }
+
+
+
 
     /**
      * Helper method to fetch a LuckPerms User object.
