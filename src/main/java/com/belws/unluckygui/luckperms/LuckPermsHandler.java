@@ -20,6 +20,41 @@ public class LuckPermsHandler {
     }
 
     /**
+     * Fetch a list of groups assigned to the player along with their context (e.g., server).
+     */
+    public List<String> getPlayerRolesWithContext(Player player) {
+        User user = getUser(player.getUniqueId());
+        if (user == null) return List.of();
+
+        return user.getNodes().stream()
+                .filter(node -> node instanceof InheritanceNode)
+                .map(node -> {
+                    InheritanceNode inheritanceNode = (InheritanceNode) node;
+                    String group = inheritanceNode.getGroupName();
+                    String serverContext = inheritanceNode.getContexts().getAnyValue("server").orElse("global");
+                    return group + " (Server: " + serverContext + ")";
+                })
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Fetch a list of groups assigned to the player along with expiration time.
+     */
+    public List<String> getPlayerRolesWithExpiration(Player player) {
+        User user = getUser(player.getUniqueId());
+        if (user == null) return List.of();
+
+        return user.getNodes().stream()
+                .filter(node -> node instanceof InheritanceNode)
+                .map(node -> {
+                    InheritanceNode inheritanceNode = (InheritanceNode) node;
+                    String group = inheritanceNode.getGroupName();
+                    String expiration = inheritanceNode.hasExpiry() ? inheritanceNode.getExpiry().toString() : "permanent";
+                    return group + " (Expires: " + expiration + ")";
+                })
+                .collect(Collectors.toList());
+    }
+    /**
      * Fetch a list of groups assigned to the player.
      */
     public List<String> getPlayerRoles(Player player) {
