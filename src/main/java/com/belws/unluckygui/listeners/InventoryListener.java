@@ -17,17 +17,19 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.Material;
 import org.bukkit.inventory.meta.SkullMeta;
+
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 public class InventoryListener implements Listener {
 
     private final LuckPermsHandler luckPermsHandler;
-    private final Map<Player, Player> playerTargetMap; // Store sender-target pairs
+    private final MenuNavigator menuNavigator;
 
     public InventoryListener(LuckPermsHandler luckPermsHandler) {
         this.luckPermsHandler = luckPermsHandler;
-        this.playerTargetMap = new HashMap<>(); // Initialize the map
+        this.menuNavigator = new MenuNavigator(luckPermsHandler);
     }
 
     @EventHandler
@@ -42,25 +44,61 @@ public class InventoryListener implements Listener {
         if (!(event.getInventory().getHolder() instanceof MenuHolder menuHolder)) return;
         MenuType menuType = menuHolder.getMenuType();
 
-        // Retrieve the target player from the stored map
-        Player targetPlayer = playerTargetMap.get(player);
+        // Retrieve the target player from the MenuNavigator's targetPlayers map
+        UUID targetPlayerUUID = MenuNavigator.targetPlayers.get(player.getUniqueId());
+        Player targetPlayer = targetPlayerUUID == null ? null : player.getServer().getPlayer(targetPlayerUUID);
 
-        // Main Menu Interaction
-        if (menuType == MenuType.MAIN_MENU && clickedItem.getType() == Material.BOOK) {
-            openMenu(player, MenuLevel.LIST_MENU, player);
+        // Handle different menu interactions
+        switch (menuType) {
+            case MAIN_MENU:
+                if (clickedItem.getType() == Material.BOOK) {
+                    openMenu(player, MenuLevel.LIST_MENU, player);
+                }
+                break;
+
+            case HELD_ROLES_MENU:
+                if (clickedItem.getType() == Material.PAPER) {
+                    if (targetPlayer != null) {
+                        handleRoleManagement(player, clickedItem, targetPlayer, false);
+                    } else {
+                        player.sendMessage("§cError: Could not identify target player.");
+                    }
+                }
+                break;
+
+            case PLAYER_OPTIONS:
+                if (targetPlayer != null) {
+                    handlePlayerOptionsMenu(player, clickedItem, targetPlayer);
+                } else {
+                    player.sendMessage("§cError: Could not identify target player.");
+                }
+                break;
+
+            case ROLE_ADD_MENU:
+                if (clickedItem.getType() == Material.PAPER) {
+                    if (targetPlayer != null) {
+                        handleRoleManagement(player, clickedItem, targetPlayer, true);
+                    } else {
+                        player.sendMessage("§cError: Could not identify target player.");
+                    }
+                }
+                break;
         }
 
-        // Held Roles Menu Interaction
-        if (menuType == MenuType.HELD_ROLES_MENU && clickedItem.getType() == Material.PAPER) {
-            handleRoleRemoval(player, clickedItem, targetPlayer);
-        }
+        // Handle navigation elements (common across menu types)
+        handleNavigationElements(player, clickedItem, menuType, targetPlayer);
+    }
 
-        // Game Mode Interaction (Player Options)
-        if (menuType == MenuType.PLAYER_OPTIONS) {
+    private void handlePlayerOptionsMenu(Player player, ItemStack clickedItem, Player targetPlayer) {
+        if (clickedItem.getType() == Material.DIRT) {
+            openMenu(player, MenuLevel.ROLE_ADD_MENU, targetPlayer);
+        } else {
             handleGameModeChange(player, clickedItem, targetPlayer);
         }
+    }
 
-        // Go Back Interaction
+    private void handleNavigationElements(Player player, ItemStack clickedItem, MenuType currentMenuType, Player targetPlayer) {
+        // Go Back button
         if (clickedItem.getType() == Material.BARRIER && clickedItem.hasItemMeta()) {
             ItemMeta meta = clickedItem.getItemMeta();
             if (meta != null && meta.displayName() != null &&
@@ -71,32 +109,44 @@ public class InventoryListener implements Listener {
 
         // Player Head (Navigation)
         if (clickedItem.getType() == Material.PLAYER_HEAD && clickedItem.hasItemMeta()) {
-            handlePlayerHeadClick(player, menuType, clickedItem);
+            handlePlayerHeadClick(player, currentMenuType, clickedItem);
         }
     }
 
-    // Handle Role Removal in Held Roles Menu
-    private void handleRoleRemoval(Player player, ItemStack clickedItem, Player targetPlayer) {
+    private void handleRoleManagement(Player player, ItemStack clickedItem, Player targetPlayer, boolean isAddition) {
+        if (targetPlayer == null || clickedItem == null) {
+            player.sendMessage("§cError: Could not identify target player.");
+            return;
+        }
+
         ItemMeta meta = clickedItem.getItemMeta();
-        if (meta == null || meta.displayName() == null || targetPlayer == null) return;
+        if (meta == null || meta.displayName() == null) {
+            return;
+        }
 
         Component roleNameComponent = meta.displayName();
         String cleanedRoleName = PlainTextComponentSerializer.plainText().serialize(roleNameComponent).trim();
-        String fullRoleName = "group." + cleanedRoleName;
 
-        if (cleanedRoleName.equalsIgnoreCase("default")) return;
+        if (!isAddition && cleanedRoleName.equalsIgnoreCase("default")) return;
 
-        boolean success = luckPermsHandler.removeRole(targetPlayer, fullRoleName);
+        String roleName = isAddition ? cleanedRoleName : "group." + cleanedRoleName;
+
+        boolean success = isAddition ?
+                luckPermsHandler.addRole(targetPlayer, cleanedRoleName) :
+                luckPermsHandler.removeRole(player, roleName);
+
         if (success) {
             luckPermsHandler.syncPlayerData(targetPlayer);
-            targetPlayer.sendMessage("§aYour role '" + cleanedRoleName + "' has been removed.");
-            player.sendMessage("§aSuccessfully removed role: " + cleanedRoleName + " from " + targetPlayer.getName());
+            String actionText = isAddition ? "granted" : "removed";
+            String preposition = isAddition ? "to" : "from";
+            targetPlayer.sendMessage("§aYou have been granted the role: '" + cleanedRoleName + "'.");
+            player.sendMessage("§aSuccessfully " + actionText + " role: " + cleanedRoleName + " " + preposition + " " + targetPlayer.getName());
+            openMenu(player, isAddition ? MenuLevel.ROLE_ADD_MENU : MenuLevel.HELD_ROLES_MENU, targetPlayer);
         } else {
-            player.sendMessage("§cFailed to remove role: " + cleanedRoleName);
+            player.sendMessage("§cFailed to " + (isAddition ? "add" : "remove") + " role: " + cleanedRoleName);
         }
     }
 
-    // Handle Game Mode Changes in Player Options Menu
     private void handleGameModeChange(Player player, ItemStack clickedItem, Player targetPlayer) {
         if (targetPlayer == null) return;
 
@@ -124,32 +174,46 @@ public class InventoryListener implements Listener {
 
         if (newGameMode != null) {
             targetPlayer.setGameMode(newGameMode);
-            player.sendMessage("§6You granted " + modeName + " to " + targetPlayer.getName() + "!");
-            targetPlayer.sendMessage("§6You have been granted " + modeName + "!");
+            sendGameModeChangeMessages(player, targetPlayer, modeName);
         }
     }
 
-    // Handle Player Head Clicks for Navigation
+    private void sendGameModeChangeMessages(Player sender, Player target, String modeName) {
+        sender.sendMessage("§6You granted " + modeName + " to " + target.getName() + "!");
+        target.sendMessage("§6You have been granted " + modeName + "!");
+    }
+
     private void handlePlayerHeadClick(Player player, MenuType menuType, ItemStack clickedItem) {
         ItemMeta meta = clickedItem.getItemMeta();
-        if (!(meta instanceof SkullMeta skullMeta) || skullMeta.getOwningPlayer() == null) return;
+        if (!(meta instanceof SkullMeta skullMeta)) {
+            return;
+        }
 
-        Player targetPlayer = player.getServer().getPlayer(skullMeta.getOwningPlayer().getName());
-        if (targetPlayer == null) return;
+        if (skullMeta.getOwningPlayer() == null) {
+            return;
+        }
+
+        String targetPlayerName = skullMeta.getOwningPlayer().getName();
+        Player targetPlayer = player.getServer().getPlayer(targetPlayerName);
+        if (targetPlayer == null) {
+            player.sendMessage("§cError: Could not find player " + targetPlayerName);
+            return;
+        }
 
         // Store the sender and target player pair in the map
-        playerTargetMap.put(player, targetPlayer);
+        MenuNavigator.targetPlayers.put(player.getUniqueId(), targetPlayer.getUniqueId());
 
-        if (menuType != MenuType.PLAYER_OPTIONS) {
-            openMenu(player, MenuLevel.PLAYER_OPTIONS, targetPlayer);
-        } else {
-            openMenu(player, MenuLevel.HELD_ROLES_MENU, targetPlayer);
-        }
+        // Navigate to appropriate menu
+        MenuLevel nextMenu = (menuType != MenuType.PLAYER_OPTIONS) ?
+                MenuLevel.PLAYER_OPTIONS : MenuLevel.HELD_ROLES_MENU;
+        openMenu(player, nextMenu, targetPlayer);
     }
 
-    // Helper method to open menus
     private void openMenu(Player player, MenuLevel menuLevel, Player targetPlayer) {
-        MenuNavigator menuNavigator = new MenuNavigator(luckPermsHandler);
-        menuNavigator.openMenu(player, menuLevel, targetPlayer);
+        if (targetPlayer == null) {
+            player.sendMessage("§cError: Could not identify target player.");
+            return;
+        }
+        MenuNavigator.openMenu(player, menuLevel, targetPlayer);
     }
 }

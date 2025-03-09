@@ -66,6 +66,14 @@ public class PlayerOptionsMenu {
 
         inventory.setItem(4, playerHead);
 
+        ItemStack testingAddRole = new ItemStack(Material.DIRT, 1);
+        ItemMeta testingAddRoleMeta = testingAddRole.getItemMeta();
+        if (testingAddRoleMeta != null) {
+            testingAddRoleMeta.displayName(Component.text("Testing Add Role", NamedTextColor.GRAY));
+            testingAddRole.setItemMeta(testingAddRoleMeta);
+        }
+        inventory.setItem(13, testingAddRole);
+
 
         return inventory;
     }

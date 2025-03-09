@@ -4,5 +4,6 @@ public enum MenuType {
     MAIN_MENU,
     LIST_MENU,
     PLAYER_OPTIONS,
-    HELD_ROLES_MENU;
+    HELD_ROLES_MENU,
+    ROLE_ADD_MENU;
 }

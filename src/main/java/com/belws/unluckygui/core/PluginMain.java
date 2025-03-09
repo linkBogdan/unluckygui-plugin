@@ -1,9 +1,11 @@
 package com.belws.unluckygui.core;
 
 import com.belws.unluckygui.commands.OpenGui;
-import com.belws.unluckygui.commands.OpenPlayerOptionsGui;  // Import the new command class
+import com.belws.unluckygui.commands.OpenPlayerOptionsGui;
 import com.belws.unluckygui.listeners.InventoryListener;
+import com.belws.unluckygui.listeners.PlayerQuitListener;
 import com.belws.unluckygui.luckperms.LuckPermsHandler;
+import com.belws.unluckygui.utils.MenuNavigator;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class PluginMain extends JavaPlugin {
@@ -18,17 +20,20 @@ public class PluginMain extends JavaPlugin {
         if (getServer().getPluginManager().getPlugin("LuckPerms") != null) {
             getLogger().info("LuckPerms detected and hooked!");
             luckPermsHandler = new LuckPermsHandler();
+
+            // Initialize MenuNavigator with LuckPermsHandler
+            new MenuNavigator(luckPermsHandler);
+
+            // Register the listeners
+            getServer().getPluginManager().registerEvents(new InventoryListener(luckPermsHandler), this);
+            getServer().getPluginManager().registerEvents(new PlayerQuitListener(getLogger()), this);
         } else {
             getLogger().warning("LuckPerms not found! Some features may be disabled.");
         }
 
-        if (luckPermsHandler != null) {
-            getServer().getPluginManager().registerEvents(new InventoryListener(luckPermsHandler), this);
-        }
-
-        // Register the new /open command
+        // Register commands with logger access
         this.getCommand("ul").setExecutor(new OpenGui());
-        this.getCommand("open").setExecutor(new OpenPlayerOptionsGui());
+        this.getCommand("open").setExecutor(new OpenPlayerOptionsGui(getLogger()));
     }
 
     public static PluginMain getInstance() {

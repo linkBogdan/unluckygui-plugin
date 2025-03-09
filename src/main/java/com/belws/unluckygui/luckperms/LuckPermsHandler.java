@@ -3,6 +3,7 @@ package com.belws.unluckygui.luckperms;
 import com.belws.unluckygui.core.PluginMain;
 import net.luckperms.api.LuckPerms;
 import net.luckperms.api.LuckPermsProvider;
+import net.luckperms.api.model.group.Group;
 import net.luckperms.api.model.user.User;
 import net.luckperms.api.node.Node;
 import net.luckperms.api.node.types.InheritanceNode;
@@ -12,13 +13,22 @@ import org.bukkit.entity.Player;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import com.belws.unluckygui.utils.MenuNavigator; 
+import com.belws.unluckygui.utils.MenuNavigator;
 
 public class LuckPermsHandler {
     private final LuckPerms luckPerms;
 
     public LuckPermsHandler() {
         this.luckPerms = LuckPermsProvider.get();
+    }
+
+    /**
+     * Fetch all available roles (groups) from LuckPerms.
+     */
+    public List<String> getAllRoles() {
+        return luckPerms.getGroupManager().getLoadedGroups().stream()
+                .map(Group::getName)
+                .collect(Collectors.toList());
     }
 
     /**
@@ -56,6 +66,7 @@ public class LuckPermsHandler {
                 })
                 .collect(Collectors.toList());
     }
+
     /**
      * Fetch a list of groups assigned to the player.
      */
@@ -82,6 +93,7 @@ public class LuckPermsHandler {
                 .anyMatch(role -> role.equalsIgnoreCase(roleName));
     }
 
+
     /**
      * Add a role to the player.
      */
@@ -89,9 +101,13 @@ public class LuckPermsHandler {
         User user = getUser(player.getUniqueId());
         if (user == null) return false;
 
-        InheritanceNode node = InheritanceNode.builder(roleName).build();
+        // Remove "group." prefix if it's already there
+        String groupName = roleName.startsWith("group.") ? roleName.substring(6) : roleName;
+
+        InheritanceNode node = InheritanceNode.builder(groupName).build();
         user.data().add(node);
         luckPerms.getUserManager().saveUser(user);
+
         return true;
     }
 
@@ -155,11 +171,15 @@ public class LuckPermsHandler {
         return true;
     }
 
+
+    /**
+     * Sync player data to ensure LuckPerms updates are applied properly.
+     */
     public void syncPlayerData(Player player) {
+        System.out.println("[UnluckyGUI] Syncing player data..."+ player.getName());
         User user = luckPerms.getUserManager().getUser(player.getUniqueId());
 
         if (user != null) {
-            // Ensure user changes are saved and reloaded
             luckPerms.getUserManager().modifyUser(user.getUniqueId(), u -> {});
             luckPerms.getUserManager().saveUser(user);
             luckPerms.getUserManager().loadUser(player.getUniqueId());
@@ -174,11 +194,9 @@ public class LuckPermsHandler {
         }
     }
 
-
-
-
-
-
+    /**
+     * Get the player's current server context for a specific role.
+     */
     private String getPlayerCurrentServer(Player player, String roleName) {
         User user = getUser(player.getUniqueId());
         if (user == null) return "global";
@@ -187,13 +205,10 @@ public class LuckPermsHandler {
                 .filter(node -> node instanceof InheritanceNode)
                 .map(node -> (InheritanceNode) node)
                 .filter(node -> node.getGroupName().equalsIgnoreCase(roleName))
-                .flatMap(node -> node.getContexts().getAnyValue("server").stream()) // Extract server context if it exists
-                .findFirst() // Get the first match
-                .orElse("global"); // Default to global if no specific server is found
+                .flatMap(node -> node.getContexts().getAnyValue("server").stream())
+                .findFirst()
+                .orElse("global");
     }
-
-
-
 
     /**
      * Helper method to fetch a LuckPerms User object.

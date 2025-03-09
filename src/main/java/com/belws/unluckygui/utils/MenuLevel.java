@@ -4,7 +4,8 @@ public enum MenuLevel {
     MAIN_MENU(1),
     LIST_MENU(2),
     PLAYER_OPTIONS(3),
-    HELD_ROLES_MENU(4);
+    HELD_ROLES_MENU(4),
+    ROLE_ADD_MENU(5);
 
     private final int level;
 
