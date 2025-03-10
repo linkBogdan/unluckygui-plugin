@@ -1,0 +1,10 @@
+# This yml changes the display name of the role in Add Role Menu.
+# Make sure you add roles with their actual name from luckperms!
+# Roles will be displayed with Capitalization regardless if you skip what I did with admin role.
+# Follow the example bellow:
+
+roles:
+  admin: "Admin"
+  trailhelper: "T-Helper"
+  vip: "VIP Player"
+  moderator: "Mod"

@@ -1,5 +1,7 @@
 package com.belws.unluckygui.listeners;
 
+import com.belws.unluckygui.core.PluginMain;
+import com.belws.unluckygui.menus.RoleAddMenu;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import com.belws.unluckygui.utils.MenuNavigator;
 import com.belws.unluckygui.utils.MenuLevel;
@@ -9,141 +11,150 @@ import com.belws.unluckygui.luckperms.LuckPermsHandler;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.GameMode;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.Material;
 import org.bukkit.inventory.meta.SkullMeta;
+import org.bukkit.Bukkit;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 import java.util.UUID;
 
 public class InventoryListener implements Listener {
 
     private final LuckPermsHandler luckPermsHandler;
     private final MenuNavigator menuNavigator;
+    private final RoleAddMenu roleAddMenu;
 
-    public InventoryListener(LuckPermsHandler luckPermsHandler) {
+    public InventoryListener(LuckPermsHandler luckPermsHandler, RoleAddMenu roleAddMenu) {
         this.luckPermsHandler = luckPermsHandler;
         this.menuNavigator = new MenuNavigator(luckPermsHandler);
+        this.roleAddMenu = roleAddMenu;
     }
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
-        if (!(event.getWhoClicked() instanceof Player player)) return;
+        if (!(event.getWhoClicked() instanceof Player)) return;
+        Player player = (Player) event.getWhoClicked();
 
-        ItemStack clickedItem = event.getCurrentItem();
-        if (clickedItem == null || clickedItem.getType() == Material.AIR) return;
-
+        // Cancel the event to prevent item movement
         event.setCancelled(true);
 
-        if (!(event.getInventory().getHolder() instanceof MenuHolder menuHolder)) return;
-        MenuType menuType = menuHolder.getMenuType();
+        // Get the clicked item
+        ItemStack clickedItem = event.getCurrentItem();
+        if (clickedItem == null) return;
 
-        // Retrieve the target player from the MenuNavigator's targetPlayers map
-        UUID targetPlayerUUID = MenuNavigator.targetPlayers.get(player.getUniqueId());
-        Player targetPlayer = targetPlayerUUID == null ? null : player.getServer().getPlayer(targetPlayerUUID);
+        // Get the target player from the navigator
+        Player targetPlayer = MenuNavigator.getTargetPlayer(player);
 
-        // Handle different menu interactions
+        // Handle back button (barrier) - only in role management menus
+        if (clickedItem.getType() == Material.BARRIER) {
+            MenuType menuType = ((MenuHolder) event.getInventory().getHolder()).getMenuType();
+            if (menuType == MenuType.ROLE_ADD_MENU || menuType == MenuType.HELD_ROLES_MENU) {
+                MenuNavigator.goBack(player);
+            } else {
+                player.closeInventory();
+            }
+            return;
+        }
+
+        // Get the current menu type from the inventory
+        MenuType menuType = ((MenuHolder) event.getInventory().getHolder()).getMenuType();
+        if (menuType == null) return;
+
+        // Handle menu-specific actions
         switch (menuType) {
             case MAIN_MENU:
-                if (clickedItem.getType() == Material.BOOK) {
-                    openMenu(player, MenuLevel.LIST_MENU, player);
-                }
+                handleMainMenuClick(player, clickedItem);
                 break;
-
-            case HELD_ROLES_MENU:
-                if (clickedItem.getType() == Material.PAPER) {
-                    if (targetPlayer != null) {
-                        handleRoleManagement(player, clickedItem, targetPlayer, false);
-                    } else {
-                        player.sendMessage("§cError: Could not identify target player.");
-                    }
-                }
+            case LIST_MENU:
+                handleListMenuClick(player, clickedItem);
                 break;
-
             case PLAYER_OPTIONS:
-                if (targetPlayer != null) {
-                    handlePlayerOptionsMenu(player, clickedItem, targetPlayer);
-                } else {
-                    player.sendMessage("§cError: Could not identify target player.");
-                }
+                handlePlayerOptionsClick(player, clickedItem, targetPlayer);
                 break;
-
+            case HELD_ROLES_MENU:
+                handleHeldRolesClick(player, clickedItem, targetPlayer);
+                break;
             case ROLE_ADD_MENU:
-                if (clickedItem.getType() == Material.PAPER) {
-                    if (targetPlayer != null) {
-                        handleRoleManagement(player, clickedItem, targetPlayer, true);
-                    } else {
-                        player.sendMessage("§cError: Could not identify target player.");
-                    }
-                }
+                handleRoleAddClick(player, clickedItem, targetPlayer);
                 break;
         }
-
-        // Handle navigation elements (common across menu types)
-        handleNavigationElements(player, clickedItem, menuType, targetPlayer);
     }
 
-    private void handlePlayerOptionsMenu(Player player, ItemStack clickedItem, Player targetPlayer) {
-        if (clickedItem.getType() == Material.DIRT) {
-            openMenu(player, MenuLevel.ROLE_ADD_MENU, targetPlayer);
-        } else {
-            handleGameModeChange(player, clickedItem, targetPlayer);
+    private void handleMainMenuClick(Player player, ItemStack clickedItem) {
+        if (clickedItem.getType() == Material.PLAYER_HEAD) {
+            // Self options - set target as self
+            openMenu(player, MenuLevel.PLAYER_OPTIONS, player);
+        } else if (clickedItem.getType() == Material.BOOK) {
+            // Player list - no target needed
+            openMenu(player, MenuLevel.LIST_MENU, null);
         }
     }
 
-    private void handleNavigationElements(Player player, ItemStack clickedItem, MenuType currentMenuType, Player targetPlayer) {
-        // Go Back button
-        if (clickedItem.getType() == Material.BARRIER && clickedItem.hasItemMeta()) {
-            ItemMeta meta = clickedItem.getItemMeta();
-            if (meta != null && meta.displayName() != null &&
-                    meta.displayName().equals(Component.text("Go Back", NamedTextColor.RED))) {
-                MenuNavigator.goBack(player);
+    private void handleListMenuClick(Player player, ItemStack clickedItem) {
+        if (clickedItem.getType() == Material.PLAYER_HEAD) {
+            String playerName = PlainTextComponentSerializer.plainText().serialize(clickedItem.getItemMeta().displayName());
+            Player targetPlayer = player.getServer().getPlayer(playerName);
+            if (targetPlayer != null) {
+                openMenu(player, MenuLevel.PLAYER_OPTIONS, targetPlayer);
             }
         }
+    }
 
-        // Player Head (Navigation)
-        if (clickedItem.getType() == Material.PLAYER_HEAD && clickedItem.hasItemMeta()) {
-            handlePlayerHeadClick(player, currentMenuType, clickedItem);
+    private void handlePlayerOptionsClick(Player player, ItemStack clickedItem, Player targetPlayer) {
+        if (clickedItem.getType() == Material.DIAMOND) {
+            // Diamond button - View roles
+            openMenu(player, MenuLevel.HELD_ROLES_MENU, targetPlayer);
+        } else if (clickedItem.getType() == Material.EMERALD) {
+            // Emerald button - Add roles
+            openMenu(player, MenuLevel.ROLE_ADD_MENU, targetPlayer);
+        } else if (clickedItem.getType() == Material.GOLDEN_APPLE) {
+            // Creative mode
+            if (targetPlayer != null) {
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "gamemode creative " + targetPlayer.getName());
+                player.sendMessage("§aSet " + targetPlayer.getName() + "'s gamemode to creative");
+            }
+        } else if (clickedItem.getType() == Material.APPLE) {
+            // Survival mode
+            if (targetPlayer != null) {
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "gamemode survival " + targetPlayer.getName());
+                player.sendMessage("§aSet " + targetPlayer.getName() + "'s gamemode to survival");
+            }
+        } else if (clickedItem.getType() == Material.ENDER_EYE) {
+            // Spectator mode
+            if (targetPlayer != null) {
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "gamemode spectator " + targetPlayer.getName());
+                player.sendMessage("§aSet " + targetPlayer.getName() + "'s gamemode to spectator");
+            }
+        } else if (clickedItem.getType() == Material.GRASS_BLOCK) {
+            // Adventure mode
+            if (targetPlayer != null) {
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "gamemode adventure " + targetPlayer.getName());
+                player.sendMessage("§aSet " + targetPlayer.getName() + "'s gamemode to adventure");
+            }
         }
     }
 
-    private void handleRoleManagement(Player player, ItemStack clickedItem, Player targetPlayer, boolean isAddition) {
-        if (targetPlayer == null || clickedItem == null) {
-            player.sendMessage("§cError: Could not identify target player.");
-            return;
+    private void handleHeldRolesClick(Player player, ItemStack clickedItem, Player targetPlayer) {
+        if (clickedItem.getType() == Material.EMERALD) {
+            openMenu(player, MenuLevel.ROLE_ADD_MENU, targetPlayer);
+        } else if (clickedItem.getType() == Material.PAPER) {
+            handleRoleManagement(player, clickedItem, targetPlayer, false);
+        } else if (clickedItem.getType() == Material.BARRIER) {
+            openMenu(player, MenuLevel.PLAYER_OPTIONS, targetPlayer);
         }
+    }
 
-        ItemMeta meta = clickedItem.getItemMeta();
-        if (meta == null || meta.displayName() == null) {
-            return;
-        }
-
-        Component roleNameComponent = meta.displayName();
-        String cleanedRoleName = PlainTextComponentSerializer.plainText().serialize(roleNameComponent).trim();
-
-        if (!isAddition && cleanedRoleName.equalsIgnoreCase("default")) return;
-
-        String roleName = isAddition ? cleanedRoleName : "group." + cleanedRoleName;
-
-        boolean success = isAddition ?
-                luckPermsHandler.addRole(targetPlayer, cleanedRoleName) :
-                luckPermsHandler.removeRole(player, roleName);
-
-        if (success) {
-            luckPermsHandler.syncPlayerData(targetPlayer);
-            String actionText = isAddition ? "granted" : "removed";
-            String preposition = isAddition ? "to" : "from";
-            targetPlayer.sendMessage("§aYou have been granted the role: '" + cleanedRoleName + "'.");
-            player.sendMessage("§aSuccessfully " + actionText + " role: " + cleanedRoleName + " " + preposition + " " + targetPlayer.getName());
-            openMenu(player, isAddition ? MenuLevel.ROLE_ADD_MENU : MenuLevel.HELD_ROLES_MENU, targetPlayer);
-        } else {
-            player.sendMessage("§cFailed to " + (isAddition ? "add" : "remove") + " role: " + cleanedRoleName);
+    private void handleRoleAddClick(Player player, ItemStack clickedItem, Player targetPlayer) {
+        if (clickedItem.getType() == Material.PAPER) {
+            handleRoleManagement(player, clickedItem, targetPlayer, true);
+        } else if (clickedItem.getType() == Material.BARRIER) {
+            openMenu(player, MenuLevel.PLAYER_OPTIONS, targetPlayer);
         }
     }
 
@@ -183,30 +194,57 @@ public class InventoryListener implements Listener {
         target.sendMessage("§6You have been granted " + modeName + "!");
     }
 
-    private void handlePlayerHeadClick(Player player, MenuType menuType, ItemStack clickedItem) {
-        ItemMeta meta = clickedItem.getItemMeta();
-        if (!(meta instanceof SkullMeta skullMeta)) {
-            return;
-        }
-
-        if (skullMeta.getOwningPlayer() == null) {
-            return;
-        }
-
-        String targetPlayerName = skullMeta.getOwningPlayer().getName();
-        Player targetPlayer = player.getServer().getPlayer(targetPlayerName);
+    private void handleRoleManagement(Player player, ItemStack clickedItem, Player targetPlayer, boolean isAddition) {
         if (targetPlayer == null) {
-            player.sendMessage("§cError: Could not find player " + targetPlayerName);
+            player.sendMessage("§cError: Could not identify target player.");
             return;
         }
 
-        // Store the sender and target player pair in the map
-        MenuNavigator.targetPlayers.put(player.getUniqueId(), targetPlayer.getUniqueId());
+        // Use getRawRoleFromItem to get the raw role
+        String rawRole = roleAddMenu.getRawRoleFromItem(clickedItem);
+        if (rawRole == null || (!isAddition && rawRole.equalsIgnoreCase("default"))) return;
 
-        // Navigate to appropriate menu
-        MenuLevel nextMenu = (menuType != MenuType.PLAYER_OPTIONS) ?
-                MenuLevel.PLAYER_OPTIONS : MenuLevel.HELD_ROLES_MENU;
-        openMenu(player, nextMenu, targetPlayer);
+        // Check if the group exists in LuckPerms using getAllRoles()
+        List<String> allRoles = luckPermsHandler.getAllRoles();  // Get all available roles
+        if (!allRoles.contains(rawRole)) {
+            player.sendMessage("§cError: The group '" + rawRole + "' does not exist.");
+            return;
+        }
+
+        // Remove "group." prefix if it's already there for removal
+        String fullRoleName = rawRole.startsWith("group.") ? rawRole.substring(6) : rawRole;
+
+        // Add or remove the role based on the action
+        boolean success = isAddition
+                ? luckPermsHandler.addRole(targetPlayer, fullRoleName)
+                : luckPermsHandler.removeRole(targetPlayer, fullRoleName);
+
+        if (success) {
+            // First sync the player data
+            luckPermsHandler.syncPlayerData(targetPlayer);
+            
+            // Send initial success message
+            player.sendMessage("§aProcessing " + (isAddition ? "role addition" : "role removal") + "...");
+            
+            // Only apply delay for role changes, not navigation
+            Bukkit.getScheduler().runTaskLater(PluginMain.getInstance(), () -> {
+                // Double-check if the role change was successful
+                boolean hasRole = luckPermsHandler.hasRole(targetPlayer, fullRoleName);
+                if ((isAddition && hasRole) || (!isAddition && !hasRole)) {
+                    // Role change was successful, send final messages
+                    player.sendMessage("§aSuccessfully " + (isAddition ? "granted" : "removed") + " role: " + fullRoleName + " " + (isAddition ? "to" : "from") + " " + targetPlayer.getName());
+                    targetPlayer.sendMessage("§aYour role has been updated: '" + fullRoleName + "'.");
+                    
+                    // Refresh the menu
+                    openMenu(player, isAddition ? MenuLevel.ROLE_ADD_MENU : MenuLevel.HELD_ROLES_MENU, targetPlayer);
+                } else {
+                    // Role change failed or took too long
+                    player.sendMessage("§cRole update verification failed. Please try again.");
+                }
+            }, 40L); // Wait 2 seconds (40 ticks) before refreshing
+        } else {
+            player.sendMessage("§cFailed to " + (isAddition ? "add" : "remove") + " role: " + fullRoleName);
+        }
     }
 
     private void openMenu(Player player, MenuLevel menuLevel, Player targetPlayer) {

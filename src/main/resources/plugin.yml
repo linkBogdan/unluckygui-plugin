@@ -6,7 +6,36 @@ commands:
   ul:
     description: Opens the main menu
     usage: /ul
-
+    permission: unluckygui.ul
+    permission-message: You do not have permission to use this command.
   open:
-    description: "Opens the player options menu"
-    usage: "/open <player_name>"
+    description: Opens the player options menu
+    usage: /open <player_name>
+    permission: unluckygui.open
+    permission-message: You do not have permission to use this command.
+  reload:
+    description: Reloads all plugin settings
+    usage: /ulreload
+    permission: unluckygui.reload
+    permission-message: You do not have permission to use this command.
+  reloadsettings:
+    description: Reloads the role settings (roleFormat.yml and rolesettings.yml)
+    usage: /reloadsettings
+    permission: unluckygui.reload
+    permission-message: You do not have permission to use this command.
+  reloadroles:
+    description: Reloads role names from roleFormat.yml
+    usage: /reloadroles
+    permission: unluckygui.reload
+    permission-message: You do not have permission to use this command.
+
+permissions:
+  unluckygui.ul:
+    description: Allows using /ul to open the main menu
+    default: op
+  unluckygui.open:
+    description: Allows using /open to open the player options menu
+    default: op
+  unluckygui.reload:
+    description: Allows using all reload commands (/ulreload, /reloadsettings, /reloadroles)
+    default: op

@@ -12,6 +12,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.inventory.meta.SkullMeta;
+import java.util.List;
 
 public class PlayerOptionsMenu {
 
@@ -23,13 +24,14 @@ public class PlayerOptionsMenu {
 
         // Create the menu with 27 content slots, the correct menu type, and title
         Inventory inventory = SlotManager.createMenu(CONTENT_SLOTS, title, MenuType.PLAYER_OPTIONS);
+        
+        // Game mode buttons
         ItemStack creativeModeButton = new ItemStack(Material.GOLDEN_APPLE);
         ItemMeta creativeModeMeta = creativeModeButton.getItemMeta();
         if (creativeModeMeta != null) {
             creativeModeMeta.displayName(Component.text("Grant Creative Mode", NamedTextColor.GOLD));
             creativeModeButton.setItemMeta(creativeModeMeta);
         }
-
         inventory.setItem(2, creativeModeButton);
 
         ItemStack survivalModeButton = new ItemStack(Material.APPLE);
@@ -56,24 +58,31 @@ public class PlayerOptionsMenu {
         }
         inventory.setItem(7, adventureModeButton);
 
-        ItemStack playerHead = new ItemStack(Material.PLAYER_HEAD, 1);
-        ItemMeta rolesMeta = playerHead.getItemMeta();
-        if (rolesMeta instanceof SkullMeta skullMeta) {
-            skullMeta.setOwningPlayer(target);
-            skullMeta.displayName(Component.text("Owned roles for ", NamedTextColor.GRAY).append(Component.text(target.getName(), NamedTextColor.AQUA)));
-            playerHead.setItemMeta(skullMeta);
+        // View roles button (Diamond)
+        ItemStack viewRolesButton = new ItemStack(Material.DIAMOND);
+        ItemMeta viewRolesMeta = viewRolesButton.getItemMeta();
+        if (viewRolesMeta != null) {
+            viewRolesMeta.displayName(Component.text("View Roles", NamedTextColor.AQUA));
+            viewRolesMeta.lore(List.of(
+                Component.text("Click to view roles for ", NamedTextColor.GRAY)
+                    .append(Component.text(target.getName(), NamedTextColor.YELLOW))
+            ));
+            viewRolesButton.setItemMeta(viewRolesMeta);
         }
+        inventory.setItem(4, viewRolesButton);
 
-        inventory.setItem(4, playerHead);
-
-        ItemStack testingAddRole = new ItemStack(Material.DIRT, 1);
-        ItemMeta testingAddRoleMeta = testingAddRole.getItemMeta();
-        if (testingAddRoleMeta != null) {
-            testingAddRoleMeta.displayName(Component.text("Testing Add Role", NamedTextColor.GRAY));
-            testingAddRole.setItemMeta(testingAddRoleMeta);
+        // Add role button (Emerald)
+        ItemStack addRoleButton = new ItemStack(Material.EMERALD);
+        ItemMeta addRoleMeta = addRoleButton.getItemMeta();
+        if (addRoleMeta != null) {
+            addRoleMeta.displayName(Component.text("Add Role", NamedTextColor.GREEN));
+            addRoleMeta.lore(List.of(
+                Component.text("Click to add a new role to ", NamedTextColor.GRAY)
+                    .append(Component.text(target.getName(), NamedTextColor.YELLOW))
+            ));
+            addRoleButton.setItemMeta(addRoleMeta);
         }
-        inventory.setItem(13, testingAddRole);
-
+        inventory.setItem(13, addRoleButton);
 
         return inventory;
     }

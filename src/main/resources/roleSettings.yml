@@ -1,0 +1,6 @@
+# You can blacklist a role from getting displayed in the Add Role menu.
+# The example role is something I use on my server to have better flexibility over members permissions.
+# You can add whatever as long as you use the right format.
+blacklist:
+  - "defaultperms"
+  #- "add_new_roles"

@@ -1,6 +1,7 @@
 package com.belws.unluckygui.luckperms;
 
 import com.belws.unluckygui.core.PluginMain;
+import com.belws.unluckygui.utils.ContextUtils;
 import net.luckperms.api.LuckPerms;
 import net.luckperms.api.LuckPermsProvider;
 import net.luckperms.api.model.group.Group;
@@ -93,7 +94,6 @@ public class LuckPermsHandler {
                 .anyMatch(role -> role.equalsIgnoreCase(roleName));
     }
 
-
     /**
      * Add a role to the player.
      */
@@ -104,79 +104,87 @@ public class LuckPermsHandler {
         // Remove "group." prefix if it's already there
         String groupName = roleName.startsWith("group.") ? roleName.substring(6) : roleName;
 
-        InheritanceNode node = InheritanceNode.builder(groupName).build();
-        user.data().add(node);
-        luckPerms.getUserManager().saveUser(user);
+        // Check if the group actually exists in LuckPerms
+        if (!luckPerms.getGroupManager().isLoaded(groupName)) return false;
 
-        return true;
+        try {
+            InheritanceNode node = InheritanceNode.builder(groupName).build();
+            user.data().add(node);
+            luckPerms.getUserManager().saveUser(user);
+
+            // Sync changes to ensure they take effect immediately
+            syncPlayerData(player);
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     /**
      * Remove a role from the target player fetched from MenuNavigator.
      */
-    public boolean removeRole(Player viewer, String roleName) {
-        Player targetPlayer = MenuNavigator.getTargetPlayer(viewer);
+    public boolean removeRole(Player viewer, String rawRoleName) {
+        Player targetPlayer = getTargetPlayer(viewer);
+
         if (targetPlayer == null) {
             viewer.sendMessage("§cError: No target player found.");
             return false;
         }
 
-        System.out.println("Attempting to remove role " + roleName + " from target player: " + targetPlayer.getName());
+        String fullRoleName = rawRoleName.startsWith("group.") ? rawRoleName.substring(6) : rawRoleName;
 
         User user = getUser(targetPlayer.getUniqueId());
         if (user == null) return false;
 
-        String fullRoleName = roleName.startsWith("group.") ? roleName.substring(6) : roleName;
+        // Get the server context for the role
+        String serverContext = getPlayerCurrentServer(targetPlayer, fullRoleName);
 
-        // Get player's current server (assuming there's a method to get the player's current server)
-        String serverContext = getPlayerCurrentServer(targetPlayer, fullRoleName); // Implement this method
-
-        // Find only nodes that match the specific role AND context
-        List<InheritanceNode> nodesToRemove = user.getNodes().stream()
+        // Fetch the nodes of the player
+        List<InheritanceNode> allNodes = user.getNodes().stream()
                 .filter(node -> node instanceof InheritanceNode)
                 .map(node -> (InheritanceNode) node)
+                .collect(Collectors.toList());
+
+        // Find the nodes to remove
+        List<InheritanceNode> nodesToRemove = allNodes.stream()
                 .filter(node -> node.getGroupName().equalsIgnoreCase(fullRoleName))
                 .filter(node -> {
-                    // Check if the node has a server context and matches the current server
-                    return node.getContexts().getAnyValue("server")
-                            .map(ctx -> ctx.equalsIgnoreCase(serverContext)) // Only remove if it matches the server
-                            .orElse(true); // If there's no server context, it’s global
+                    String nodeContext = node.getContexts().getAnyValue("server").orElse("global");
+                    return nodeContext.equalsIgnoreCase(serverContext);
                 })
                 .collect(Collectors.toList());
 
         if (nodesToRemove.isEmpty()) {
-            System.out.println("[UnluckyGUI] ERROR: " + targetPlayer.getName() + " does not have the role " + fullRoleName + " on server " + serverContext);
+            viewer.sendMessage("§cError: " + targetPlayer.getName() + " does not have the role " + fullRoleName + " on server " + serverContext);
             return false;
         }
 
-        // Remove only relevant nodes
+        // Attempt to remove the nodes
         boolean removed = false;
         for (InheritanceNode node : nodesToRemove) {
             if (user.data().remove(node).wasSuccessful()) {
-                System.out.println("[UnluckyGUI] Removed role: " + fullRoleName + " (Context: " + node.getContexts() + ")");
                 removed = true;
             }
         }
 
-        if (!removed) {
-            System.out.println("[UnluckyGUI] Failed to remove role: " + fullRoleName);
+        if (!removed) return false;
+
+        // Save and reload the user data
+        try {
+            luckPerms.getUserManager().saveUser(user);
+            luckPerms.getUserManager().loadUser(targetPlayer.getUniqueId());
+        } catch (Exception e) {
+            viewer.sendMessage("§cError: Failed to save changes.");
             return false;
         }
 
-        // Ensure changes are applied and persisted
-        luckPerms.getUserManager().saveUser(user);
-        luckPerms.getUserManager().modifyUser(user.getUniqueId(), u -> {});
-        luckPerms.getUserManager().loadUser(targetPlayer.getUniqueId());
-
         return true;
     }
-
 
     /**
      * Sync player data to ensure LuckPerms updates are applied properly.
      */
     public void syncPlayerData(Player player) {
-        System.out.println("[UnluckyGUI] Syncing player data..."+ player.getName());
         User user = luckPerms.getUserManager().getUser(player.getUniqueId());
 
         if (user != null) {
@@ -184,13 +192,12 @@ public class LuckPermsHandler {
             luckPerms.getUserManager().saveUser(user);
             luckPerms.getUserManager().loadUser(player.getUniqueId());
 
-            // Clear and refresh the player's permissions
             player.recalculatePermissions();
 
-            // Wait a tick and force LuckPerms to refresh by running a console command
             Bukkit.getScheduler().runTaskLater(PluginMain.getInstance(), () -> {
                 Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "lp user " + player.getName() + " parent info");
-            }, 20L); // Delay by 1 second (20 ticks) to allow LuckPerms to process changes
+                player.recalculatePermissions();
+            }, 20L);
         }
     }
 
@@ -215,5 +222,19 @@ public class LuckPermsHandler {
      */
     private User getUser(UUID uuid) {
         return luckPerms.getUserManager().getUser(uuid);
+    }
+
+    /**
+     * Get the target player for the viewer (including self-targeting).
+     */
+    public static Player getTargetPlayer(Player viewer) {
+        UUID targetUUID = MenuNavigator.targetPlayers.get(viewer.getUniqueId()); // Get the target based on the viewer's UUID
+        if (targetUUID == null) {
+            // If no target is set, it means the viewer is interacting with themselves
+            MenuNavigator.targetPlayers.put(viewer.getUniqueId(), viewer.getUniqueId()); // Set the viewer as the target
+            return viewer;  // Return the viewer as the target (for self-modification)
+        }
+        Player targetPlayer = Bukkit.getPlayer(targetUUID); // Retrieve the player based on UUID
+        return targetPlayer; // Return the actual target player
     }
 }

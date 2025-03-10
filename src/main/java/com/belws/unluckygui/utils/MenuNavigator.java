@@ -30,11 +30,26 @@ public class MenuNavigator {
     // Method to open the specified menu for a player and assign a target
     public static void openMenu(Player viewer, MenuLevel menuLevel, Player target) {
         UUID viewerId = viewer.getUniqueId();
-        currentMenus.put(viewerId, menuLevel); // Track the player's current menu
+        MenuLevel previousMenu = currentMenus.get(viewerId);
+        if (previousMenu != null) {
+            previousMenus.put(viewerId, previousMenu);
+        }
+        currentMenus.put(viewerId, menuLevel);
 
-        // If the menu involves a target player, store that target in the map
-        if ((menuLevel == MenuLevel.PLAYER_OPTIONS || menuLevel == MenuLevel.HELD_ROLES_MENU || menuLevel == MenuLevel.ROLE_ADD_MENU) && target != null) {
+        // Only update target if explicitly provided or if entering a menu that requires a target
+        if (target != null && (menuLevel == MenuLevel.PLAYER_OPTIONS || 
+            menuLevel == MenuLevel.HELD_ROLES_MENU || 
+            menuLevel == MenuLevel.ROLE_ADD_MENU)) {
             targetPlayers.put(viewerId, target.getUniqueId());
+        }
+
+        // Ensure target player is fetched and valid
+        Player targetPlayer = getTargetPlayer(viewer);
+        if (targetPlayer == null && (menuLevel == MenuLevel.PLAYER_OPTIONS || 
+            menuLevel == MenuLevel.HELD_ROLES_MENU || 
+            menuLevel == MenuLevel.ROLE_ADD_MENU)) {
+            viewer.sendMessage("No valid target player found.");
+            return;
         }
 
         // Open the menu based on the specified level
@@ -46,15 +61,12 @@ public class MenuNavigator {
                 viewer.openInventory(ListMenu.createMenu(viewer));
                 break;
             case PLAYER_OPTIONS:
-                Player targetPlayer = getTargetPlayer(viewer);
                 viewer.openInventory(PlayerOptionsMenu.createMenu(viewer, targetPlayer));
                 break;
             case HELD_ROLES_MENU:
-                targetPlayer = getTargetPlayer(viewer);
                 new HeldRolesMenu(luckPermsHandler).openMenu(viewer, targetPlayer);
                 break;
             case ROLE_ADD_MENU:
-                targetPlayer = getTargetPlayer(viewer);
                 new RoleAddMenu(luckPermsHandler, targetPlayer).openMenu(viewer, targetPlayer);
                 break;
             default:
@@ -69,23 +81,16 @@ public class MenuNavigator {
         MenuLevel currentMenuLevel = currentMenus.getOrDefault(playerId, MenuLevel.MAIN_MENU);
         Player targetPlayer = getTargetPlayer(player);
 
-        // Navigate back based on the current menu level
+        // Only allow going back from role management menus to player options
         switch (currentMenuLevel) {
             case ROLE_ADD_MENU:
-                openMenu(player, MenuLevel.HELD_ROLES_MENU, targetPlayer);
-                break;
             case HELD_ROLES_MENU:
+                // Both role menus go back to player options
                 openMenu(player, MenuLevel.PLAYER_OPTIONS, targetPlayer);
                 break;
-            case PLAYER_OPTIONS:
-                if (!player.equals(targetPlayer)) {
-                    openMenu(player, MenuLevel.LIST_MENU, targetPlayer);
-                } else {
-                    openMenu(player, MenuLevel.MAIN_MENU, targetPlayer);
-                }
-                break;
             default:
-                openMenu(player, MenuLevel.MAIN_MENU, targetPlayer);
+                // For all other menus, just close the inventory
+                player.closeInventory();
                 break;
         }
     }
@@ -94,17 +99,14 @@ public class MenuNavigator {
     public static Player getTargetPlayer(Player viewer) {
         UUID targetUUID = targetPlayers.get(viewer.getUniqueId());
         if (targetUUID == null) {
-            System.out.println("DEBUG: No target found for " + viewer.getName());
-            return null;  // Or return the viewer themselves if no target player exists
+            targetPlayers.put(viewer.getUniqueId(), viewer.getUniqueId());
+            return viewer;
         }
-        Player targetPlayer = Bukkit.getPlayer(targetUUID); // Retrieve the player based on UUID
-        System.out.println("DEBUG: Target for " + viewer.getName() + " is " + (targetPlayer != null ? targetPlayer.getName() : "null"));
-        return targetPlayer;
+        return Bukkit.getPlayer(targetUUID);
     }
 
     // Optional: Utility method to clear a player's target
     public static void clearTarget(Player viewer) {
         targetPlayers.remove(viewer.getUniqueId());
     }
-
 }
